@@ -8,10 +8,9 @@ if [ "$#" -eq 1 ]; then
      cd $1
 fi
 
+# upgrade pip so we can use wheel downloads
+pip install -U pip
 
 # Install the requirements for this package as well as this module.
-pip install -r requirements/python
-pip install .
-
-# Install the requirements for this package in development
-pip install -r requirements/python-dev
+pip install -r requirements/python-dev3
+pip install -r requirements/python-doc

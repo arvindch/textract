@@ -2,6 +2,7 @@ import os
 import subprocess
 import tempfile
 import shutil
+import six
 
 import requests
 
@@ -16,6 +17,12 @@ class GenericUtilities(object):
             filename += '.' + extension
             shutil.move(stream.name, filename)
         return filename
+
+    def clean_text(self, text):
+        lines = text.splitlines()
+        # Clean empty lines (fixes epub issue)
+        lines = [line for line in lines if line.strip()]  # Clean empty lines
+        return six.b('\n').join(lines)
 
 
 class BaseParserTestCase(GenericUtilities):
@@ -68,11 +75,11 @@ class BaseParserTestCase(GenericUtilities):
             # http://stackoverflow.com/a/16696317/564709
             response = requests.get(url, stream=True)
             with open(filename, 'wb') as stream:
-                for chunk in response.iter_content(chunk_size=1024): 
+                for chunk in response.iter_content(chunk_size=1024):
                     if chunk: # filter out keep-alive new chunks
                         stream.write(chunk)
                         stream.flush()
-        
+
     @property
     def raw_text_filename(self):
         return self.get_filename(self.raw_text_filename_root,
@@ -102,10 +109,11 @@ class BaseParserTestCase(GenericUtilities):
             self.standardized_text_filename,
             cleanup=False,
         )
-        with open(temp_filename) as stream:
+        with open(temp_filename, 'rb') as stream:
             self.assertEqual(
-                ''.join(stream.read().split()),
+                six.b('').join(stream.read().split()),
                 self.get_standardized_text(),
+                "standardized text fails for %s" % self.extension,
             )
         os.remove(temp_filename)
 
@@ -114,8 +122,9 @@ class BaseParserTestCase(GenericUtilities):
         import textract
         result = textract.process(self.standardized_text_filename)
         self.assertEqual(
-            ''.join(result.split()),
+            six.b('').join(result.split()),
             self.get_standardized_text(),
+            "standardized text fails for %s" % self.extension,
         )
 
     # def test_unicode_text_cli(self):
@@ -134,12 +143,23 @@ class BaseParserTestCase(GenericUtilities):
 
     def get_cli_options(self, **kwargs):
         option = ''
-        for key, val in kwargs.iteritems():
+        for key, val in six.iteritems(kwargs):
             option += '--%s=%s ' % (key, val)
         return option
 
     def get_standardized_text(self):
-        return "the quick brown fox jumps over the lazy dog".replace(' ','')
+        filename = os.path.join(
+            self.get_extension_directory(),
+            "standardized_text.txt"
+        )
+        if os.path.exists(filename):
+            with open(filename, 'rb') as stream:
+                standardized_text = stream.read()
+        else:
+            standardized_text = six.b(
+                "the quick brown fox jumps over the lazy dog"
+            )
+        return six.b('').join(standardized_text.split())
 
     def assertSuccessfulCommand(self, command):
         self.assertEqual(
@@ -173,8 +193,9 @@ class BaseParserTestCase(GenericUtilities):
             cleanup=False,
             **kwargs
         )
+
         self.assertSuccessfulCommand(
-            "diff '%(temp_filename)s' '%(expected_filename)s'" % locals()
+            "diff --ignore-blank-lines '%(temp_filename)s' '%(expected_filename)s'" % locals()
         )
         os.remove(temp_filename)
 
@@ -184,8 +205,10 @@ class BaseParserTestCase(GenericUtilities):
 
         import textract
         result = textract.process(filename, **kwargs)
-        with open(expected_filename) as stream:
-            self.assertEqual(result, stream.read())
+        with open(expected_filename, 'rb') as stream:
+            result = self.clean_text(result)
+            expected = self.clean_text(stream.read())
+            self.assertEqual(result, expected)
 
 
 class ShellParserTestCase(BaseParserTestCase):

@@ -5,7 +5,9 @@ reused in many of the other parser modules.
 import subprocess
 import tempfile
 import os
+import errno
 
+import six
 import chardet
 
 from .. import exceptions
@@ -30,7 +32,7 @@ class BaseParser(object):
         """
         return text.encode(encoding, 'ignore')
 
-    def process(self, filename, encoding, **kwargs):
+    def process(self, filename, input_encoding, output_encoding="utf8", **kwargs):
         """Process ``filename`` and encode byte-string with ``encoding``. This
         method is called by :func:`textract.parsers.process` and wraps
         the :meth:`.BaseParser.extract` method in `a delicious unicode
@@ -42,24 +44,27 @@ class BaseParser(object):
         # output encoding
         # http://nedbatchelder.com/text/unipain/unipain.html#35
         byte_string = self.extract(filename, **kwargs)
-        unicode_string = self.decode(byte_string)
-        return self.encode(unicode_string, encoding)
+        unicode_string = self.decode(byte_string, input_encoding)
+        return self.encode(unicode_string, output_encoding)
 
-    def decode(self, text):
+    def decode(self, text, input_encoding=None):
         """Decode ``text`` using the `chardet
         <https://github.com/chardet/chardet>`_ package.
         """
         # only decode byte strings into unicode if it hasn't already
         # been done by a subclass
-        if isinstance(text, unicode):
+        if isinstance(text, six.text_type):
             return text
 
         # empty text? nothing to decode
         if not text:
             return u''
 
-        # use chardet to automatically detect the encoding text
-        max_confidence, max_encoding = 0.0, None
+        # use the provided encoding
+        if input_encoding:
+            return text.decode(input_encoding)
+
+        # use chardet to automatically detect the encoding text if no encoding is provided
         result = chardet.detect(text)
         return text.decode(result['encoding'])
 
@@ -70,17 +75,25 @@ class ShellParser(BaseParser):
     `Fabric <http://www.fabfile.org/>`_-like behavior.
     """
 
-    def run(self, command):
+    def run(self, args):
         """Run ``command`` and return the subsequent ``stdout`` and ``stderr``
         as a tuple. If the command is not successful, this raises a
         :exc:`textract.exceptions.ShellError`.
         """
 
         # run a subprocess and put the stdout and stderr on the pipe object
-        pipe = subprocess.Popen(
-            command, shell=True,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
+        try:
+            pipe = subprocess.Popen(
+                args,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+        except OSError as e:
+            if e.errno == errno.ENOENT:
+                # File not found.
+                # This is equivalent to getting exitcode 127 from sh
+                raise exceptions.ShellError(
+                    ' '.join(args), 127, '', '',
+                )
 
         # pipe.wait() ends up hanging on large files. using
         # pipe.communicate appears to avoid this issue
@@ -89,7 +102,7 @@ class ShellParser(BaseParser):
         # if pipe is busted, raise an error (unlike Fabric)
         if pipe.returncode != 0:
             raise exceptions.ShellError(
-                command, pipe.returncode, stdout, stderr,
+                ' '.join(args), pipe.returncode, stdout, stderr,
             )
 
         return stdout, stderr

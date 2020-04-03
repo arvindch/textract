@@ -1,5 +1,7 @@
 import os
-from tempfile import mkdtemp, mkstemp
+import shutil
+import six
+from tempfile import mkdtemp
 
 from ..exceptions import UnknownMethod, ShellError
 
@@ -15,42 +17,49 @@ class Parser(ShellParser):
     def extract(self, filename, method='', **kwargs):
         if method == '' or method == 'pdftotext':
             try:
-                return self.extract_pdftotext(filename)
+                return self.extract_pdftotext(filename, **kwargs)
             except ShellError as ex:
                 # If pdftotext isn't installed and the pdftotext method
                 # wasn't specified, then gracefully fallback to using
                 # pdfminer instead.
-                if method == '' and ex.is_uninstalled():
-                    return self.extract_pdfminer(filename)
+                if method == '' and ex.is_not_installed():
+                    return self.extract_pdfminer(filename, **kwargs)
                 else:
                     raise ex
 
         elif method == 'pdfminer':
-            return self.extract_pdfminer(filename)
+            return self.extract_pdfminer(filename, **kwargs)
         elif method == 'tesseract':
-            return self.extract_tesseract(filename)
+            return self.extract_tesseract(filename, **kwargs)
         else:
             raise UnknownMethod(method)
 
-    def extract_pdftotext(self, filename):
+    def extract_pdftotext(self, filename, **kwargs):
         """Extract text from pdfs using the pdftotext command line utility."""
-        stdout, _ = self.run('pdftotext "%(filename)s" -' % locals())
+        if 'layout' in kwargs:
+            args = ['pdftotext', '-layout', filename, '-']
+        else:
+            args = ['pdftotext', filename, '-']
+        stdout, _ = self.run(args)
         return stdout
 
-    def extract_pdfminer(self, filename):
+    def extract_pdfminer(self, filename, **kwargs):
         """Extract text from pdfs using pdfminer."""
-        stdout, _ = self.run('pdf2txt.py "%(filename)s"' % locals())
+        stdout, _ = self.run(['pdf2txt.py', filename])
         return stdout
 
-    def extract_tesseract(self, filename):
+    def extract_tesseract(self, filename, **kwargs):
         """Extract text from pdfs using tesseract (per-page OCR)."""
         temp_dir = mkdtemp()
         base = os.path.join(temp_dir, 'conv')
-        stdout, _ = self.run('pdftoppm "%s" "%s"' % (filename, base))
-
         contents = []
-        for page in os.listdir(temp_dir):
-            page_path = os.path.join(temp_dir, page)
-            page_content = TesseractParser().extract(page_path)
-            contents.append(page_content)
-        return '\n\n'.join(contents)
+        try:
+            stdout, _ = self.run(['pdftoppm', filename, base])
+
+            for page in sorted(os.listdir(temp_dir)):
+                page_path = os.path.join(temp_dir, page)
+                page_content = TesseractParser().extract(page_path, **kwargs)
+                contents.append(page_content)
+            return six.b('').join(contents)
+        finally:
+            shutil.rmtree(temp_dir)

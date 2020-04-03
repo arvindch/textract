@@ -1,6 +1,7 @@
 import speech_recognition as sr
 import os
 
+from ..exceptions import UnknownMethod, ShellError
 from .utils import ShellParser
 
 
@@ -16,7 +17,7 @@ class Parser(ShellParser):
     with Rich (US English) for best results
     """
 
-    def extract(self, filename, **kwargs):
+    def extract(self, filename, method='', **kwargs):
         speech = ''
 
         # convert to wav, if not already .wav
@@ -24,7 +25,7 @@ class Parser(ShellParser):
         if ext != '.wav':
             temp_filename = self.convert_to_wav(filename)
             try:
-                speech = self.extract(temp_filename, **kwargs)
+                speech = self.extract(temp_filename, method, **kwargs)
             finally:  # make sure temp_file is deleted
                 os.remove(temp_filename)
         else:
@@ -34,8 +35,17 @@ class Parser(ShellParser):
                 audio = r.record(source)
 
             try:
-                speech = r.recognize(audio)
+                if method == 'google' or method == '':
+                    speech = r.recognize_google(audio)
+                elif method == 'sphinx':
+                    speech = r.recognize_sphinx(audio)
+                else:
+                    raise UnknownMethod(method)
             except LookupError:  # audio is not understandable
+                speech = ''
+            except sr.UnknownValueError:
+                speech = ''
+            except sr.RequestError as e:
                 speech = ''
 
             # add a newline, to make output cleaner
@@ -51,9 +61,6 @@ class Parser(ShellParser):
         http://www.text2speech.org/,
         with American Male 2 for best results
         """
-        command = (
-            'sox -G -c 1 "%(filename)s" {0}'
-        )
         temp_filename = '{0}.wav'.format(self.temp_filename())
-        self.run(command.format(temp_filename) % locals())
+        self.run(['sox', '-G', '-c', '1', filename, temp_filename])
         return temp_filename

@@ -17,13 +17,13 @@ Ubuntu / Debian
 
 There are two steps required to run this package on
 Ubuntu/Debian. First you must install some system packages using the
-`apt-get <https://help.ubuntu.com/12.04/serverguide/apt-get.html>`_
+`apt-get <https://help.ubuntu.com/14.04/serverguide/apt-get.html>`_
 package manager before installing textract from pypi.
 
 .. code-block:: bash
 
-    apt-get install python-dev libxml2-dev libxslt1-dev antiword poppler-utils pstotext tesseract-ocr \
-    flac ffmpeg lame libmad0 libsox-fmt-mp3 sox
+    apt-get install python-dev libxml2-dev libxslt1-dev antiword unrtf poppler-utils pstotext tesseract-ocr \
+    flac ffmpeg lame libmad0 libsox-fmt-mp3 sox libjpeg-dev swig libpulse-dev
     pip install textract
 
 .. note::
@@ -36,8 +36,7 @@ OSX
 ---
 
 These steps rely on you having `homebrew <http://brew.sh/>`_ installed
-as well as the `cask <http://caskroom.io/>`_ plugin (``brew install
-caskroom/cask/brew-cask``). The basic idea is to first install
+as well as the `cask <http://caskroom.io/>`_ plugin (``brew tap caskroom/cask``). The basic idea is to first install
 `XQuartz <https://xquartz.macosforge.org/landing/>`_ before
 installing a bunch of system packages before installing textract from
 pypi.
@@ -45,7 +44,7 @@ pypi.
 .. code-block:: bash
 
     brew cask install xquartz
-    brew install poppler antiword tesseract
+    brew install poppler antiword unrtf tesseract swig
     pip install textract
 
 ..     brew install libxml2 libxslt antiword poppler tesseract
@@ -103,7 +102,7 @@ documenation about how to install the textract dependencies, please
     - `pstotext <http://pages.cs.wisc.edu/~ghost/doc/pstotext.htm>`_
       is required by the ``.ps`` parser.
 
-    - `tesseract-ocr <https://code.google.com/p/tesseract-ocr/>`_ 
+    - `tesseract-ocr <https://code.google.com/p/tesseract-ocr/>`_
       is required by the ``.jpg``, ``.png`` and ``.gif`` parser.
 
     - `sox <http://sox.sourceforge.net/>`_

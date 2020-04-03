@@ -4,22 +4,31 @@ Route the request to the appropriate parser based on file type.
 
 import os
 import importlib
+import glob
+import re
 
 from .. import exceptions
 
 # Dictionary structure for synonymous file extension types
 EXTENSION_SYNONYMS = {
     ".jpeg": ".jpg",
+    ".tff": ".tiff",
+    ".tif": ".tiff",
     ".htm": ".html",
+    "": ".txt",
+    ".log": ".txt",
 }
 
 # default encoding that is returned by the process method. specify it
 # here so the default is used on both the process function and also by
 # the command line interface
-DEFAULT_ENCODING = 'utf_8'
+DEFAULT_OUTPUT_ENCODING = 'utf_8'
+
+# filename format
+_FILENAME_SUFFIX = '_parser'
 
 
-def process(filename, encoding=DEFAULT_ENCODING, **kwargs):
+def process(filename, input_encoding=None, output_encoding=DEFAULT_OUTPUT_ENCODING, extension=None, **kwargs):
     """This is the core function used for extracting text. It routes the
     ``filename`` to the appropriate parser and returns the extracted
     text as a byte-string encoded with ``encoding``.
@@ -32,8 +41,18 @@ def process(filename, encoding=DEFAULT_ENCODING, **kwargs):
     # get the filename extension, which is something like .docx for
     # example, and import the module dynamically using importlib. This
     # is a relative import so the name of the package is necessary
-    _, ext = os.path.splitext(filename)
-    ext = ext.lower()
+    # normally, file extension will be extracted from the file name
+    # if the file name has no extension, then the user can pass the
+    # extension as an argument
+    if extension:
+        ext = extension
+        # check if the extension has the leading .
+        if not ext.startswith('.'):
+            ext = '.' + ext
+        ext = ext.lower()
+    else:
+        _, ext = os.path.splitext(filename)
+        ext = ext.lower()
 
     # check the EXTENSION_SYNONYMS dictionary
     ext = EXTENSION_SYNONYMS.get(ext, ext)
@@ -41,16 +60,45 @@ def process(filename, encoding=DEFAULT_ENCODING, **kwargs):
     # to avoid conflicts with packages that are installed globally
     # (e.g. python's json module), all extension parser modules have
     # the _parser extension
-    rel_module = ext + '_parser'
-    module_name = rel_module[1:]
+    rel_module = ext + _FILENAME_SUFFIX
 
-    # if this module name doesn't exist in this directory it isn't
-    # currently supported
-    this_dir = os.path.dirname(os.path.abspath(__file__))
-    if not os.path.exists(os.path.join(this_dir, module_name + '.py')):
+    # If we can't import the module, the file extension isn't currently
+    # supported
+    try:
+        filetype_module = importlib.import_module(
+            rel_module, 'textract.parsers'
+        )
+    except ImportError:
         raise exceptions.ExtensionNotSupported(ext)
 
     # do the extraction
-    filetype_module = importlib.import_module(rel_module, 'textract.parsers')
+
     parser = filetype_module.Parser()
-    return parser.process(filename, encoding, **kwargs)
+    return parser.process(filename, input_encoding, output_encoding, **kwargs)
+
+
+def _get_available_extensions():
+    """Get a list of available file extensions to make it easy for
+    tab-completion and exception handling.
+    """
+    extensions = []
+
+    # from filenames
+    parsers_dir = os.path.join(os.path.dirname(__file__))
+    glob_filename = os.path.join(parsers_dir, "*" + _FILENAME_SUFFIX + ".py")
+    # escape backslashes for python 3.6+
+    glob_filename = glob_filename.replace("//", "////")
+    ext_re = re.compile(glob_filename.replace('*', r"(?P<ext>\w+)"))
+    for filename in glob.glob(glob_filename):
+        ext_match = ext_re.match(filename)
+        ext = ext_match.groups()[0]
+        extensions.append(ext)
+        extensions.append('.' + ext)
+
+    # from relevant synonyms (don't use the '' synonym)
+    for ext in EXTENSION_SYNONYMS.keys():
+        if ext:
+            extensions.append(ext)
+            extensions.append(ext.replace('.', '', 1))
+    extensions.sort()
+    return extensions

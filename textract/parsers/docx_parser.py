@@ -1,4 +1,4 @@
-import docx
+import docx2txt
 
 from .utils import BaseParser
 
@@ -8,7 +8,4 @@ class Parser(BaseParser):
     """
 
     def extract(self, filename, **kwargs):
-        document = docx.Document(filename)
-        return '\n\n'.join([
-            paragraph.text for paragraph in document.paragraphs
-        ])
+        return docx2txt.process(filename)

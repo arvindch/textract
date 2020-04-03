@@ -46,7 +46,7 @@ file types by either mentioning them on the `issue tracker
 
 * ``.doc`` via `antiword`_
 
-* ``.docx`` via `python-docx`_
+* ``.docx`` via `python-docx2txt`_
 
 * ``.eml`` via python builtins
 
@@ -60,44 +60,49 @@ file types by either mentioning them on the `issue tracker
 
 * ``.html`` and ``.htm`` via `beautifulsoup4`_
 
-* ``.mp3`` via `SpeechRecognition`_ and `sox`_
+* ``.mp3`` via `sox`_, `SpeechRecognition`_, and `pocketsphinx`_
+
+* ``.msg`` via `msg-extractor`_
 
 * ``.odt`` via python builtins
 
-* ``.ogg`` via `SpeechRecognition`_ and `sox`_
+* ``.ogg`` via `sox`_, `SpeechRecognition`_, and `pocketsphinx`_
 
-* ``.pdf`` via `pdftotext`_ (default) or `pdfminer`_
+* ``.pdf`` via `pdftotext`_ (default) or `pdfminer.six`_
 
 * ``.png`` via `tesseract-ocr`_
 
 * ``.pptx`` via `python-pptx`_
 
-* ``.ps`` via `ps2text`_
+* ``.ps`` via `ps2ascii`_
+
+* ``.rtf`` via `unrtf`_
+
+* ``.tiff`` and ``.tif`` via `tesseract-ocr`_
 
 * ``.txt`` via python builtins
 
-* ``.wav`` via `SpeechRecognition`_
+* ``.wav`` via `SpeechRecognition`_ and `pocketsphinx`_
 
 * ``.xlsx`` via `xlrd <https://pypi.python.org/pypi/xlrd>`_
 
 * ``.xls`` via `xlrd <https://pypi.python.org/pypi/xlrd>`_
 
-Please recommend other file types by either mentioning them on the
-`issue tracker <https://github.com/deanmalmgren/textract/issues>`_ or
-by :ref:`contributing <contributing>`
-
 .. this is a list of all the packages that textract uses for extraction
 .. _antiword: http://www.winfield.demon.nl/
 .. _beautifulsoup4: http://beautiful-soup-4.readthedocs.org/en/latest/
 .. _ebooklib: https://github.com/aerkalov/ebooklib
-.. _pdfminer: https://euske.github.io/pdfminer/
+.. _msg-extractor: https://github.com/mattgwwalker/msg-extractor
+.. _pdfminer.six: https://github.com/goulu/pdfminer
 .. _pdftotext: http://poppler.freedesktop.org/
-.. _ps2text: http://pages.cs.wisc.edu/~ghost/doc/pstotext.htm
-.. _python-docx: https://python-docx.readthedocs.org/en/latest/
+.. _pocketsphinx: https://github.com/cmusphinx/pocketsphinx/
+.. _ps2ascii: https://www.ghostscript.com/doc/current/Use.htm
+.. _python-docx2txt: https://github.com/ankushshah89/python-docx2txt
 .. _python-pptx: https://python-pptx.readthedocs.org/en/latest/
 .. _SpeechRecognition: https://pypi.python.org/pypi/SpeechRecognition/
 .. _sox: http://sox.sourceforge.net/
 .. _tesseract-ocr: https://code.google.com/p/tesseract-ocr/
+.. _unrtf: http://www.gnu.org/software/unrtf/
 
 .. _related-projects:
 
@@ -123,7 +128,7 @@ there, but here is a small sample of similar projects:
   great minds...). It is written in node.js.
 
 * `pandoc <http://johnmacfarlane.net/pandoc/>`_ is intended to be a
-  document conversion (a much more difficult task!), but it does have
+  document conversion tool (a much more difficult task!), but it does have
   `the ability to convert to plain text
   <http://johnmacfarlane.net/pandoc/demos.html>`_. It is written in
   Haskell.
@@ -147,4 +152,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

@@ -1,7 +1,7 @@
 import unittest
 
-import base
+from . import base
 
 
-class EmlTestCase(base.BaseParserTestCase, unittest.TestCase):
+class CsvTestCase(base.BaseParserTestCase, unittest.TestCase):
     extension = 'csv'

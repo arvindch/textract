@@ -6,11 +6,38 @@ import argparse
 import encodings
 import os
 import pkgutil
+import sys
+import six
+import re
+import glob
 
 import argcomplete
 
 from . import VERSION
-from .parsers import DEFAULT_ENCODING
+from .parsers import DEFAULT_ENCODING, _get_available_extensions
+
+
+class AddToNamespaceAction(argparse.Action):
+    """This adds KEY,VALUE arbitrary pairs to the argparse.Namespace object
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        key, val = values.strip().split('=')
+        if hasattr(namespace, key):
+            parser.error((
+                'Duplicate specification of the key "%(key)s" with --option.'
+            ) % locals())
+        setattr(namespace, key, val)
+
+
+# Fix FileType to honor 'b' flag, see: https://bugs.python.org/issue14156
+class FileType(argparse.FileType):
+    def __call__(self, string):
+        if string == '-' and six.PY3:
+            if 'r' in self._mode:
+                string = sys.stdin.fileno()
+            elif 'w' in self._mode:
+                string = sys.stdout.fileno()
+        return super(FileType, self).__call__(string)
 
 
 # This function is necessary to enable autodocumentation of the script
@@ -36,12 +63,25 @@ def get_parser():
         help='Specify the encoding of the output.',
     )
     parser.add_argument(
-        '-m', '--method', default='',
-        help='specify a method of extraction for formats that support it',
+        '--extension', type=str, default=None,
+        choices=_get_available_extensions(),
+        help='Specify the extension of the file.',
     )
     parser.add_argument(
-        '-o', '--output', type=argparse.FileType('w'), default='-',
-        help='output raw text in this file',
+        '-m', '--method', default='',
+        help='Specify a method of extraction for formats that support it',
+    )
+    parser.add_argument(
+        '-o', '--output', type=FileType('wb'), default='-',
+        help='Output raw text in this file',
+    )
+    parser.add_argument(
+        '-O', '--option', type=str, action=AddToNamespaceAction,
+        help=(
+            'Add arbitrary options to various parsers of the form '
+            'KEYWORD=VALUE. A full list of available KEYWORD options is '
+            'available at http://bit.ly/textract-options'
+        ),
     )
     parser.add_argument(
         '-v', '--version', action='version', version='%(prog)s '+VERSION,
